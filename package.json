@@ -1,0 +1,16 @@
+{
+  "name": "local-qr-generator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "jsbarcode": "^3.12.3",
+    "qrcode": "^1.5.4",
+    "vite": "^7.0.0"
+  }
+}

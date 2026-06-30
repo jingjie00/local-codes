@@ -1,0 +1,598 @@
+import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
+import './styles.css';
+
+const previewSize = 512;
+
+const state = {
+  mode: 'qr',
+  type: 'url',
+  dotColor: '#111827',
+  backgroundColor: '#ffffff',
+  errorCorrectionLevel: 'H',
+  margin: 4,
+  jpgSize: 1024,
+  dotStyle: 'square',
+  roundness: 0.8,
+  logoDataUrl: '',
+  logoImage: null,
+  logoSize: 18,
+  barcodeValue: '123456789012',
+  barcodeFormat: 'CODE128',
+  barcodeText: true,
+  fields: {
+    url: 'https://example.com',
+    text: 'Hello from a fully local QR generator.',
+    email: 'hello@example.com',
+    emailSubject: '',
+    emailBody: '',
+    phone: '+15551234567',
+    smsPhone: '+15551234567',
+    smsBody: '',
+    wifiSsid: '',
+    wifiPassword: '',
+    wifiEncryption: 'WPA',
+    wifiHidden: false
+  }
+};
+
+const elements = {
+  modeButtons: [...document.querySelectorAll('.mode-button')],
+  typeButtons: [...document.querySelectorAll('.type-button')],
+  qrTypeSection: document.querySelector('#qr-type-section'),
+  qrStyleSection: document.querySelector('#qr-style-section'),
+  qrLogoSection: document.querySelector('#qr-logo-section'),
+  qrSettingsSection: document.querySelector('#qr-settings-section'),
+  dynamicFields: document.querySelector('#dynamic-fields'),
+  barcodeFields: document.querySelector('#barcode-fields'),
+  barcodeValue: document.querySelector('#barcode-value'),
+  barcodeFormat: document.querySelector('#barcode-format'),
+  barcodeText: document.querySelector('#barcode-text'),
+  dotColor: document.querySelector('#dot-color'),
+  dotColorText: document.querySelector('#dot-color-text'),
+  backgroundColor: document.querySelector('#background-color'),
+  backgroundColorText: document.querySelector('#background-color-text'),
+  dotStyleButtons: [...document.querySelectorAll('[data-dot-style]')],
+  roundness: document.querySelector('#roundness'),
+  logoFile: document.querySelector('#logo-file'),
+  logoSize: document.querySelector('#logo-size'),
+  errorLevelButtons: [...document.querySelectorAll('[data-error-level]')],
+  margin: document.querySelector('#margin'),
+  jpgSize: document.querySelector('#jpg-size'),
+  jpgSizeNumber: document.querySelector('#jpg-size-number'),
+  downloadSvg: document.querySelector('#download-svg'),
+  downloadJpg: document.querySelector('#download-jpg'),
+  canvas: document.querySelector('#qr-canvas'),
+  message: document.querySelector('#message'),
+  payloadSummary: document.querySelector('#payload-summary'),
+  sizeSummary: document.querySelector('#size-summary')
+};
+
+const typeLabels = {
+  url: 'Link',
+  text: 'Text',
+  email: 'Email',
+  phone: 'Phone',
+  sms: 'SMS',
+  wifi: 'Wi-Fi'
+};
+
+const fieldTemplates = {
+  url: [{ id: 'url', label: 'Link', type: 'url', placeholder: 'https://example.com' }],
+  text: [{ id: 'text', label: 'Text', placeholder: 'Type anything to encode', multiline: true }],
+  email: [
+    { id: 'email', label: 'Email address', type: 'email', placeholder: 'hello@example.com' },
+    { id: 'emailSubject', label: 'Subject', placeholder: 'Optional subject' },
+    { id: 'emailBody', label: 'Body', placeholder: 'Optional message', multiline: true }
+  ],
+  phone: [{ id: 'phone', label: 'Phone number', type: 'tel', placeholder: '+15551234567' }],
+  sms: [
+    { id: 'smsPhone', label: 'Phone number', type: 'tel', placeholder: '+15551234567' },
+    { id: 'smsBody', label: 'Message', placeholder: 'Optional SMS text', multiline: true }
+  ],
+  wifi: [
+    { id: 'wifiSsid', label: 'Network name', placeholder: 'Wi-Fi SSID' },
+    { id: 'wifiPassword', label: 'Password', type: 'password', placeholder: 'Wi-Fi password' }
+  ]
+};
+
+function renderDynamicFields() {
+  const fragment = document.createDocumentFragment();
+
+  fieldTemplates[state.type].forEach((field) => {
+    const group = document.createElement('div');
+    group.className = 'field-group';
+
+    const label = document.createElement('label');
+    label.htmlFor = field.id;
+    label.textContent = field.label;
+
+    const input = field.multiline ? document.createElement('textarea') : document.createElement('input');
+    input.id = field.id;
+    input.name = field.id;
+    input.placeholder = field.placeholder || '';
+    input.value = state.fields[field.id] || '';
+    if (!field.multiline) input.type = field.type || 'text';
+
+    input.addEventListener('input', () => {
+      state.fields[field.id] = input.value;
+      updateCode();
+    });
+
+    group.append(label, input);
+    fragment.append(group);
+  });
+
+  if (state.type === 'wifi') {
+    const row = document.createElement('div');
+    row.className = 'grid-2';
+
+    const encryptionGroup = document.createElement('div');
+    encryptionGroup.className = 'field-group';
+    const encryptionLabel = document.createElement('label');
+    encryptionLabel.htmlFor = 'wifiEncryption';
+    encryptionLabel.textContent = 'Security';
+    const encryption = document.createElement('select');
+    encryption.id = 'wifiEncryption';
+    [
+      ['WPA', 'WPA/WPA2'],
+      ['WEP', 'WEP'],
+      ['nopass', 'None']
+    ].forEach(([value, text]) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = text;
+      option.selected = state.fields.wifiEncryption === value;
+      encryption.append(option);
+    });
+    encryption.addEventListener('change', () => {
+      state.fields.wifiEncryption = encryption.value;
+      updateCode();
+    });
+    encryptionGroup.append(encryptionLabel, encryption);
+
+    const hiddenGroup = document.createElement('label');
+    hiddenGroup.className = 'checkbox-control compact-check';
+    const hidden = document.createElement('input');
+    hidden.type = 'checkbox';
+    hidden.checked = state.fields.wifiHidden;
+    hidden.addEventListener('change', () => {
+      state.fields.wifiHidden = hidden.checked;
+      updateCode();
+    });
+    hiddenGroup.append(hidden, document.createTextNode('Hidden network'));
+
+    row.append(encryptionGroup, hiddenGroup);
+    fragment.append(row);
+  }
+
+  elements.dynamicFields.replaceChildren(fragment);
+}
+
+function buildPayload() {
+  if (state.mode === 'barcode') return state.barcodeValue.trim();
+
+  switch (state.type) {
+    case 'url':
+      return state.fields.url.trim();
+    case 'text':
+      return state.fields.text;
+    case 'email':
+      return buildEmailPayload();
+    case 'phone':
+      return `tel:${state.fields.phone.trim()}`;
+    case 'sms':
+      return buildSmsPayload();
+    case 'wifi':
+      return buildWifiPayload();
+    default:
+      return '';
+  }
+}
+
+function buildEmailPayload() {
+  const address = state.fields.email.trim();
+  const params = new URLSearchParams();
+  if (state.fields.emailSubject.trim()) params.set('subject', state.fields.emailSubject.trim());
+  if (state.fields.emailBody.trim()) params.set('body', state.fields.emailBody.trim());
+  const query = params.toString();
+  return `mailto:${address}${query ? `?${query}` : ''}`;
+}
+
+function buildSmsPayload() {
+  const phone = state.fields.smsPhone.trim();
+  const body = state.fields.smsBody.trim();
+  return body ? `SMSTO:${phone}:${body}` : `SMSTO:${phone}`;
+}
+
+function buildWifiPayload() {
+  const ssid = escapeWifiValue(state.fields.wifiSsid);
+  const password = escapeWifiValue(state.fields.wifiPassword);
+  const type = state.fields.wifiEncryption;
+  const hidden = state.fields.wifiHidden ? 'true' : 'false';
+  return `WIFI:T:${type};S:${ssid};P:${password};H:${hidden};;`;
+}
+
+function escapeWifiValue(value) {
+  return String(value).replace(/[\\;,:"]/g, '\\$&');
+}
+
+async function updateCode() {
+  const payload = buildPayload();
+  const isReady = payload.trim().length > 0;
+  elements.downloadSvg.disabled = !isReady;
+  elements.downloadJpg.disabled = !isReady;
+  elements.payloadSummary.textContent =
+    state.mode === 'qr' ? `${typeLabels[state.type]} QR` : `${state.barcodeFormat} Barcode`;
+  elements.sizeSummary.textContent = `${state.jpgSize} px JPG`;
+
+  if (!isReady) {
+    clearCanvas(previewSize, previewSize);
+    setMessage('Add content to generate a code.');
+    return;
+  }
+
+  try {
+    if (state.mode === 'qr') {
+      renderQrToCanvas(elements.canvas, payload, previewSize);
+      setMessage('Generated locally in your browser.');
+    } else {
+      renderBarcodeToCanvas(elements.canvas, payload, previewSize);
+      setMessage('Barcode generated locally in your browser.');
+    }
+  } catch (error) {
+    clearCanvas(previewSize, previewSize);
+    setMessage(error.message || 'Unable to generate this code.');
+  }
+}
+
+function renderQrToCanvas(canvas, payload, width) {
+  const ctx = prepareCanvas(canvas, width, width);
+  const qr = QRCode.create(payload, { errorCorrectionLevel: state.errorCorrectionLevel });
+  const count = qr.modules.size;
+  const margin = state.margin;
+  const tile = width / (count + margin * 2);
+
+  drawQrBackground(ctx, width);
+  ctx.fillStyle = state.dotColor;
+
+  for (let row = 0; row < count; row += 1) {
+    for (let col = 0; col < count; col += 1) {
+      if (!qr.modules.get(row, col)) continue;
+      const x = (col + margin) * tile;
+      const y = (row + margin) * tile;
+      if (state.dotStyle === 'rounded') {
+        roundedRect(ctx, x, y, tile, tile, (tile / 2) * state.roundness);
+        ctx.fill();
+      } else {
+        ctx.fillRect(x, y, Math.ceil(tile), Math.ceil(tile));
+      }
+    }
+  }
+
+  if (state.logoImage) {
+    drawLogo(ctx, width);
+  }
+}
+
+function drawQrBackground(ctx, width) {
+  ctx.fillStyle = state.backgroundColor;
+  ctx.fillRect(0, 0, width, width);
+}
+
+function drawLogo(ctx, width) {
+  const logoWidth = width * (state.logoSize / 100);
+  const padding = logoWidth * 0.18;
+  const plateWidth = logoWidth + padding * 2;
+  const plateX = (width - plateWidth) / 2;
+  const plateY = (width - plateWidth) / 2;
+  const logoX = (width - logoWidth) / 2;
+  const logoY = (width - logoWidth) / 2;
+
+  ctx.fillStyle = state.backgroundColor;
+  roundedRect(ctx, plateX, plateY, plateWidth, plateWidth, plateWidth * 0.18);
+  ctx.fill();
+  ctx.drawImage(state.logoImage, logoX, logoY, logoWidth, logoWidth);
+}
+
+function renderBarcodeToCanvas(canvas, payload, width) {
+  const height = Math.max(220, Math.round(width * 0.46));
+  prepareCanvas(canvas, width, height);
+  const sharpness = canvas === elements.canvas ? Math.max(2, window.devicePixelRatio || 1) : 1;
+  JsBarcode(canvas, payload, barcodeOptions(width, sharpness));
+  canvas.style.aspectRatio = `${canvas.width} / ${canvas.height}`;
+}
+
+function barcodeOptions(width, sharpness = 1) {
+  return {
+    format: state.barcodeFormat,
+    lineColor: state.dotColor,
+    background: state.backgroundColor,
+    width: Math.max(3, Math.round(width / 100)) * sharpness,
+    height: Math.round(width * 0.23),
+    margin: Math.max(8, state.margin * 4),
+    displayValue: state.barcodeText,
+    font: 'system-ui',
+    fontSize: Math.max(16, Math.round(width * 0.035))
+  };
+}
+
+function prepareCanvas(canvas, width, height) {
+  const ratio = canvas === elements.canvas ? window.devicePixelRatio || 1 : 1;
+  canvas.dataset.codeMode = state.mode;
+  canvas.width = width * ratio;
+  canvas.height = height * ratio;
+  canvas.style.aspectRatio = `${width} / ${height}`;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  return ctx;
+}
+
+function clearCanvas(width, height) {
+  const ctx = prepareCanvas(elements.canvas, width, height);
+  ctx.fillStyle = state.backgroundColor;
+  ctx.fillRect(0, 0, width, height);
+}
+
+function roundedRect(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + width, y, x + width, y + height, r);
+  ctx.arcTo(x + width, y + height, x, y + height, r);
+  ctx.arcTo(x, y + height, x, y, r);
+  ctx.arcTo(x, y, x + width, y, r);
+  ctx.closePath();
+}
+
+function buildQrSvg(payload, size) {
+  const qr = QRCode.create(payload, { errorCorrectionLevel: state.errorCorrectionLevel });
+  const count = qr.modules.size;
+  const tile = size / (count + state.margin * 2);
+  const radius = state.dotStyle === 'rounded' ? (tile / 2) * state.roundness : 0;
+  const parts = [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`,
+    `<rect width="100%" height="100%" fill="${state.backgroundColor}"/>`
+  ];
+
+  for (let row = 0; row < count; row += 1) {
+    for (let col = 0; col < count; col += 1) {
+      if (!qr.modules.get(row, col)) continue;
+      const x = roundNumber((col + state.margin) * tile);
+      const y = roundNumber((row + state.margin) * tile);
+      const w = roundNumber(tile);
+      parts.push(
+        `<rect x="${x}" y="${y}" width="${w}" height="${w}" rx="${roundNumber(radius)}" fill="${state.dotColor}"/>`
+      );
+    }
+  }
+
+  if (state.logoDataUrl) {
+    const logoWidth = size * (state.logoSize / 100);
+    const padding = logoWidth * 0.18;
+    const plateWidth = logoWidth + padding * 2;
+    const plateX = (size - plateWidth) / 2;
+    const logoX = (size - logoWidth) / 2;
+    parts.push(
+      `<rect x="${roundNumber(plateX)}" y="${roundNumber(plateX)}" width="${roundNumber(plateWidth)}" height="${roundNumber(plateWidth)}" rx="${roundNumber(plateWidth * 0.18)}" fill="${state.backgroundColor}"/>`,
+      `<image href="${state.logoDataUrl}" x="${roundNumber(logoX)}" y="${roundNumber(logoX)}" width="${roundNumber(logoWidth)}" height="${roundNumber(logoWidth)}" preserveAspectRatio="xMidYMid meet"/>`
+    );
+  }
+
+  parts.push('</svg>');
+  return parts.join('');
+}
+
+function buildBarcodeSvg(payload) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  JsBarcode(svg, payload, barcodeOptions(state.jpgSize));
+  return new XMLSerializer().serializeToString(svg);
+}
+
+async function downloadSvg() {
+  const payload = buildPayload();
+  if (!payload.trim()) return;
+
+  const svg = state.mode === 'qr' ? buildQrSvg(payload, state.jpgSize) : buildBarcodeSvg(payload);
+  downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), filename('svg'));
+}
+
+async function downloadJpg() {
+  const payload = buildPayload();
+  if (!payload.trim()) return;
+
+  const exportCanvas = document.createElement('canvas');
+  if (state.mode === 'qr') {
+    renderQrToCanvas(exportCanvas, payload, state.jpgSize);
+  } else {
+    renderBarcodeToCanvas(exportCanvas, payload, state.jpgSize);
+  }
+
+  exportCanvas.toBlob(
+    (blob) => {
+      if (blob) downloadBlob(blob, filename('jpg'));
+    },
+    'image/jpeg',
+    0.94
+  );
+}
+
+function filename(extension) {
+  const prefix = state.mode === 'qr' ? `qr-${state.type}` : `barcode-${state.barcodeFormat.toLowerCase()}`;
+  return `${prefix}-${state.jpgSize}px.${extension}`;
+}
+
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function setMessage(text) {
+  elements.message.textContent = text;
+}
+
+function roundNumber(value) {
+  return Number(value.toFixed(3));
+}
+
+function syncColor(colorInput, textInput, key) {
+  colorInput.addEventListener('input', () => {
+    state[key] = colorInput.value;
+    textInput.value = colorInput.value;
+    updateCode();
+  });
+
+  textInput.addEventListener('input', () => {
+    if (!/^#[0-9a-fA-F]{6}$/.test(textInput.value)) return;
+    state[key] = textInput.value;
+    colorInput.value = textInput.value;
+    updateCode();
+  });
+}
+
+function syncSize(source) {
+  const value = Math.min(4096, Math.max(256, Number(source.value) || 1024));
+  state.jpgSize = value;
+  elements.jpgSize.value = String(value);
+  elements.jpgSizeNumber.value = String(value);
+  updateCode();
+}
+
+function setMode(mode) {
+  state.mode = mode;
+  const isQr = mode === 'qr';
+  elements.modeButtons.forEach((button) => {
+    const isActive = button.dataset.mode === mode;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-pressed', String(isActive));
+  });
+  elements.qrTypeSection.classList.toggle('is-hidden', !isQr);
+  elements.dynamicFields.classList.toggle('is-hidden', !isQr);
+  elements.qrStyleSection.classList.toggle('is-hidden', !isQr);
+  elements.qrLogoSection.classList.toggle('is-hidden', !isQr);
+  elements.qrSettingsSection.classList.toggle('is-hidden', !isQr);
+  elements.barcodeFields.classList.toggle('is-hidden', isQr);
+  updateCode();
+}
+
+function setActiveButton(buttons, activeButton) {
+  buttons.forEach((button) => {
+    const isActive = button === activeButton;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-pressed', String(isActive));
+  });
+}
+
+elements.modeButtons.forEach((button) => {
+  button.addEventListener('click', () => setMode(button.dataset.mode));
+});
+
+elements.typeButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    state.type = button.dataset.type;
+    elements.typeButtons.forEach((item) => {
+      const isActive = item === button;
+      item.classList.toggle('is-active', isActive);
+      item.setAttribute('aria-pressed', String(isActive));
+    });
+    renderDynamicFields();
+    updateCode();
+  });
+});
+
+elements.barcodeValue.addEventListener('input', () => {
+  state.barcodeValue = elements.barcodeValue.value;
+  updateCode();
+});
+
+elements.barcodeFormat.addEventListener('change', () => {
+  state.barcodeFormat = elements.barcodeFormat.value;
+  updateCode();
+});
+
+elements.barcodeText.addEventListener('change', () => {
+  state.barcodeText = elements.barcodeText.checked;
+  updateCode();
+});
+
+elements.dotStyleButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    state.dotStyle = button.dataset.dotStyle;
+    setActiveButton(elements.dotStyleButtons, button, 'dotStyle');
+    updateCode();
+  });
+});
+
+elements.roundness.addEventListener('input', () => {
+  state.roundness = Number(elements.roundness.value) / 100;
+  updateCode();
+});
+
+elements.logoSize.addEventListener('input', () => {
+  state.logoSize = Number(elements.logoSize.value) || 18;
+  updateCode();
+});
+
+elements.logoFile.addEventListener('change', () => {
+  const file = elements.logoFile.files?.[0];
+  if (!file) {
+    state.logoDataUrl = '';
+    state.logoImage = null;
+    updateCode();
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.addEventListener('load', () => {
+    const image = new Image();
+    image.addEventListener('load', () => {
+      state.logoDataUrl = String(reader.result);
+      state.logoImage = image;
+      updateCode();
+    });
+    image.src = String(reader.result);
+  });
+  reader.readAsDataURL(file);
+});
+
+elements.errorLevelButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    state.errorCorrectionLevel = button.dataset.errorLevel;
+    setActiveButton(elements.errorLevelButtons, button, 'errorLevel');
+    updateCode();
+  });
+});
+
+elements.margin.addEventListener('input', () => {
+  state.margin = Math.min(10, Math.max(0, Number(elements.margin.value) || 0));
+  updateCode();
+});
+
+elements.jpgSize.addEventListener('input', () => syncSize(elements.jpgSize));
+elements.jpgSizeNumber.addEventListener('input', () => syncSize(elements.jpgSizeNumber));
+elements.downloadSvg.addEventListener('click', downloadSvg);
+elements.downloadJpg.addEventListener('click', downloadJpg);
+
+syncColor(elements.dotColor, elements.dotColorText, 'dotColor');
+syncColor(elements.backgroundColor, elements.backgroundColorText, 'backgroundColor');
+elements.modeButtons.forEach((button) => {
+  button.setAttribute('aria-pressed', String(button.dataset.mode === state.mode));
+});
+elements.typeButtons.forEach((button) => {
+  button.setAttribute('aria-pressed', String(button.dataset.type === state.type));
+});
+elements.dotStyleButtons.forEach((button) => {
+  button.setAttribute('aria-pressed', String(button.dataset.dotStyle === state.dotStyle));
+});
+elements.errorLevelButtons.forEach((button) => {
+  button.setAttribute('aria-pressed', String(button.dataset.errorLevel === state.errorCorrectionLevel));
+});
+renderDynamicFields();
+setMode(state.mode);
