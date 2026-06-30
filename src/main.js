@@ -8,7 +8,9 @@ const state = {
   mode: 'qr',
   type: 'url',
   dotColor: '#111827',
+  transparentCode: false,
   backgroundColor: '#ffffff',
+  transparentBackground: true,
   errorCorrectionLevel: 'H',
   margin: 4,
   jpgSize: 1024,
@@ -50,14 +52,21 @@ const elements = {
   barcodeText: document.querySelector('#barcode-text'),
   dotColor: document.querySelector('#dot-color'),
   dotColorText: document.querySelector('#dot-color-text'),
+  transparentCode: document.querySelector('#transparent-code'),
   backgroundColor: document.querySelector('#background-color'),
   backgroundColorText: document.querySelector('#background-color-text'),
+  transparentBackground: document.querySelector('#transparent-background'),
   dotStyleButtons: [...document.querySelectorAll('[data-dot-style]')],
   roundness: document.querySelector('#roundness'),
   logoFile: document.querySelector('#logo-file'),
+  logoName: document.querySelector('#logo-name'),
+  logoPreview: document.querySelector('#logo-preview'),
+  logoRemove: document.querySelector('#logo-remove'),
   logoSize: document.querySelector('#logo-size'),
-  errorLevelButtons: [...document.querySelectorAll('[data-error-level]')],
+  errorLevel: document.querySelector('#error-level'),
+  errorLevelValue: document.querySelector('#error-level-value'),
   margin: document.querySelector('#margin'),
+  marginValue: document.querySelector('#margin-value'),
   jpgSize: document.querySelector('#jpg-size'),
   jpgSizeNumber: document.querySelector('#jpg-size-number'),
   downloadSvg: document.querySelector('#download-svg'),
@@ -76,6 +85,13 @@ const typeLabels = {
   sms: 'SMS',
   wifi: 'Wi-Fi'
 };
+
+const errorLevels = [
+  { value: 'L', label: 'Low' },
+  { value: 'M', label: 'Medium' },
+  { value: 'Q', label: 'Quartile' },
+  { value: 'H', label: 'High' }
+];
 
 const fieldTemplates = {
   url: [{ id: 'url', label: 'Link', type: 'url', placeholder: 'https://example.com' }],
@@ -98,6 +114,7 @@ const fieldTemplates = {
 
 function renderDynamicFields() {
   const fragment = document.createDocumentFragment();
+  elements.dynamicFields.classList.toggle('is-expanded-text', state.type === 'text');
 
   fieldTemplates[state.type].forEach((field) => {
     const group = document.createElement('div');
@@ -246,15 +263,15 @@ async function updateCode() {
   }
 }
 
-function renderQrToCanvas(canvas, payload, width) {
+function renderQrToCanvas(canvas, payload, width, options = {}) {
   const ctx = prepareCanvas(canvas, width, width);
   const qr = QRCode.create(payload, { errorCorrectionLevel: state.errorCorrectionLevel });
   const count = qr.modules.size;
   const margin = state.margin;
   const tile = width / (count + margin * 2);
 
-  drawQrBackground(ctx, width);
-  ctx.fillStyle = state.dotColor;
+  drawQrBackground(ctx, width, options);
+  ctx.fillStyle = getCodeColor();
 
   for (let row = 0; row < count; row += 1) {
     for (let col = 0; col < count; col += 1) {
@@ -271,16 +288,19 @@ function renderQrToCanvas(canvas, payload, width) {
   }
 
   if (state.logoImage) {
-    drawLogo(ctx, width);
+    drawLogo(ctx, width, options);
   }
 }
 
-function drawQrBackground(ctx, width) {
-  ctx.fillStyle = state.backgroundColor;
+function drawQrBackground(ctx, width, options = {}) {
+  const background = getBackgroundColor(options);
+  ctx.clearRect(0, 0, width, width);
+  if (background === 'transparent') return;
+  ctx.fillStyle = background;
   ctx.fillRect(0, 0, width, width);
 }
 
-function drawLogo(ctx, width) {
+function drawLogo(ctx, width, options = {}) {
   const logoWidth = width * (state.logoSize / 100);
   const padding = logoWidth * 0.18;
   const plateWidth = logoWidth + padding * 2;
@@ -289,25 +309,25 @@ function drawLogo(ctx, width) {
   const logoX = (width - logoWidth) / 2;
   const logoY = (width - logoWidth) / 2;
 
-  ctx.fillStyle = state.backgroundColor;
+  ctx.fillStyle = getLogoPlateColor(options);
   roundedRect(ctx, plateX, plateY, plateWidth, plateWidth, plateWidth * 0.18);
   ctx.fill();
   ctx.drawImage(state.logoImage, logoX, logoY, logoWidth, logoWidth);
 }
 
-function renderBarcodeToCanvas(canvas, payload, width) {
+function renderBarcodeToCanvas(canvas, payload, width, options = {}) {
   const height = Math.max(220, Math.round(width * 0.46));
   prepareCanvas(canvas, width, height);
   const sharpness = canvas === elements.canvas ? Math.max(2, window.devicePixelRatio || 1) : 1;
-  JsBarcode(canvas, payload, barcodeOptions(width, sharpness));
+  JsBarcode(canvas, payload, barcodeOptions(width, sharpness, options));
   canvas.style.aspectRatio = `${canvas.width} / ${canvas.height}`;
 }
 
-function barcodeOptions(width, sharpness = 1) {
+function barcodeOptions(width, sharpness = 1, options = {}) {
   return {
     format: state.barcodeFormat,
-    lineColor: state.dotColor,
-    background: state.backgroundColor,
+    lineColor: getCodeColor(),
+    background: getBackgroundColor(options) === 'transparent' ? 'rgba(255,255,255,0)' : getBackgroundColor(options),
     width: Math.max(3, Math.round(width / 100)) * sharpness,
     height: Math.round(width * 0.23),
     margin: Math.max(8, state.margin * 4),
@@ -331,8 +351,29 @@ function prepareCanvas(canvas, width, height) {
 
 function clearCanvas(width, height) {
   const ctx = prepareCanvas(elements.canvas, width, height);
-  ctx.fillStyle = state.backgroundColor;
+  const background = getBackgroundColor();
+  ctx.clearRect(0, 0, width, height);
+  if (background === 'transparent') return;
+  ctx.fillStyle = background;
   ctx.fillRect(0, 0, width, height);
+}
+
+function getBackgroundColor(options = {}) {
+  if (options.jpgFallback) return '#ffffff';
+  return state.transparentBackground ? 'transparent' : state.backgroundColor;
+}
+
+function getCodeColor() {
+  return state.transparentCode ? 'rgba(255,255,255,0)' : state.dotColor;
+}
+
+function getSvgCodeColor() {
+  return state.transparentCode ? 'transparent' : state.dotColor;
+}
+
+function getLogoPlateColor(options = {}) {
+  if (options.jpgFallback) return '#ffffff';
+  return state.transparentBackground ? '#ffffff' : state.backgroundColor;
 }
 
 function roundedRect(ctx, x, y, width, height, radius) {
@@ -352,9 +393,11 @@ function buildQrSvg(payload, size) {
   const tile = size / (count + state.margin * 2);
   const radius = state.dotStyle === 'rounded' ? (tile / 2) * state.roundness : 0;
   const parts = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`,
-    `<rect width="100%" height="100%" fill="${state.backgroundColor}"/>`
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`
   ];
+  if (!state.transparentBackground) {
+    parts.push(`<rect width="100%" height="100%" fill="${state.backgroundColor}"/>`);
+  }
 
   for (let row = 0; row < count; row += 1) {
     for (let col = 0; col < count; col += 1) {
@@ -363,7 +406,7 @@ function buildQrSvg(payload, size) {
       const y = roundNumber((row + state.margin) * tile);
       const w = roundNumber(tile);
       parts.push(
-        `<rect x="${x}" y="${y}" width="${w}" height="${w}" rx="${roundNumber(radius)}" fill="${state.dotColor}"/>`
+        `<rect x="${x}" y="${y}" width="${w}" height="${w}" rx="${roundNumber(radius)}" fill="${getSvgCodeColor()}"/>`
       );
     }
   }
@@ -375,7 +418,7 @@ function buildQrSvg(payload, size) {
     const plateX = (size - plateWidth) / 2;
     const logoX = (size - logoWidth) / 2;
     parts.push(
-      `<rect x="${roundNumber(plateX)}" y="${roundNumber(plateX)}" width="${roundNumber(plateWidth)}" height="${roundNumber(plateWidth)}" rx="${roundNumber(plateWidth * 0.18)}" fill="${state.backgroundColor}"/>`,
+      `<rect x="${roundNumber(plateX)}" y="${roundNumber(plateX)}" width="${roundNumber(plateWidth)}" height="${roundNumber(plateWidth)}" rx="${roundNumber(plateWidth * 0.18)}" fill="${state.transparentBackground ? '#ffffff' : state.backgroundColor}"/>`,
       `<image href="${state.logoDataUrl}" x="${roundNumber(logoX)}" y="${roundNumber(logoX)}" width="${roundNumber(logoWidth)}" height="${roundNumber(logoWidth)}" preserveAspectRatio="xMidYMid meet"/>`
     );
   }
@@ -404,9 +447,9 @@ async function downloadJpg() {
 
   const exportCanvas = document.createElement('canvas');
   if (state.mode === 'qr') {
-    renderQrToCanvas(exportCanvas, payload, state.jpgSize);
+    renderQrToCanvas(exportCanvas, payload, state.jpgSize, { jpgFallback: true });
   } else {
-    renderBarcodeToCanvas(exportCanvas, payload, state.jpgSize);
+    renderBarcodeToCanvas(exportCanvas, payload, state.jpgSize, { jpgFallback: true });
   }
 
   exportCanvas.toBlob(
@@ -490,6 +533,33 @@ function setActiveButton(buttons, activeButton) {
   });
 }
 
+function clearLogo() {
+  state.logoDataUrl = '';
+  state.logoImage = null;
+  elements.logoFile.value = '';
+  updateLogoUi();
+  updateCode();
+}
+
+function updateLogoUi(name = 'No logo selected') {
+  elements.logoName.textContent = name;
+  elements.logoPreview.src = state.logoDataUrl;
+  elements.logoPreview.classList.toggle('is-hidden', !state.logoDataUrl);
+  elements.logoRemove.disabled = !state.logoDataUrl;
+}
+
+function syncBackgroundUi() {
+  elements.transparentBackground.checked = state.transparentBackground;
+  elements.backgroundColor.disabled = state.transparentBackground;
+  elements.backgroundColorText.disabled = state.transparentBackground;
+}
+
+function syncCodeColorUi() {
+  elements.transparentCode.checked = state.transparentCode;
+  elements.dotColor.disabled = state.transparentCode;
+  elements.dotColorText.disabled = state.transparentCode;
+}
+
 elements.modeButtons.forEach((button) => {
   button.addEventListener('click', () => setMode(button.dataset.mode));
 });
@@ -543,9 +613,7 @@ elements.logoSize.addEventListener('input', () => {
 elements.logoFile.addEventListener('change', () => {
   const file = elements.logoFile.files?.[0];
   if (!file) {
-    state.logoDataUrl = '';
-    state.logoImage = null;
-    updateCode();
+    clearLogo();
     return;
   }
 
@@ -555,23 +623,42 @@ elements.logoFile.addEventListener('change', () => {
     image.addEventListener('load', () => {
       state.logoDataUrl = String(reader.result);
       state.logoImage = image;
+      updateLogoUi(file.name);
       updateCode();
+    });
+    image.addEventListener('error', () => {
+      clearLogo();
+      setMessage('Choose a valid image file.');
     });
     image.src = String(reader.result);
   });
   reader.readAsDataURL(file);
 });
 
-elements.errorLevelButtons.forEach((button) => {
-  button.addEventListener('click', () => {
-    state.errorCorrectionLevel = button.dataset.errorLevel;
-    setActiveButton(elements.errorLevelButtons, button, 'errorLevel');
-    updateCode();
-  });
+elements.logoRemove.addEventListener('click', clearLogo);
+
+elements.transparentCode.addEventListener('change', () => {
+  state.transparentCode = elements.transparentCode.checked;
+  syncCodeColorUi();
+  updateCode();
+});
+
+elements.transparentBackground.addEventListener('change', () => {
+  state.transparentBackground = elements.transparentBackground.checked;
+  syncBackgroundUi();
+  updateCode();
+});
+
+elements.errorLevel.addEventListener('input', () => {
+  const level = errorLevels[Number(elements.errorLevel.value)] || errorLevels[3];
+  state.errorCorrectionLevel = level.value;
+  elements.errorLevelValue.textContent = level.label;
+  updateCode();
 });
 
 elements.margin.addEventListener('input', () => {
   state.margin = Math.min(10, Math.max(0, Number(elements.margin.value) || 0));
+  elements.marginValue.textContent = String(state.margin);
   updateCode();
 });
 
@@ -582,6 +669,8 @@ elements.downloadJpg.addEventListener('click', downloadJpg);
 
 syncColor(elements.dotColor, elements.dotColorText, 'dotColor');
 syncColor(elements.backgroundColor, elements.backgroundColorText, 'backgroundColor');
+syncCodeColorUi();
+syncBackgroundUi();
 elements.modeButtons.forEach((button) => {
   button.setAttribute('aria-pressed', String(button.dataset.mode === state.mode));
 });
@@ -591,8 +680,9 @@ elements.typeButtons.forEach((button) => {
 elements.dotStyleButtons.forEach((button) => {
   button.setAttribute('aria-pressed', String(button.dataset.dotStyle === state.dotStyle));
 });
-elements.errorLevelButtons.forEach((button) => {
-  button.setAttribute('aria-pressed', String(button.dataset.errorLevel === state.errorCorrectionLevel));
-});
+elements.errorLevelValue.textContent =
+  errorLevels.find((level) => level.value === state.errorCorrectionLevel)?.label || 'High';
+elements.marginValue.textContent = String(state.margin);
+updateLogoUi();
 renderDynamicFields();
 setMode(state.mode);

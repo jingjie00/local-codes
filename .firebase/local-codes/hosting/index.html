@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local Codes</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script type="module" crossorigin src="/assets/index-CrxLFcpU.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-IFwQ0Wdv.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Local Codes</p>
+          <h1>Local Codes</h1>
+        </div>
+        <span class="status-pill">QR + Barcode</span>
+      </header>
+
+      <section class="workspace" aria-label="Code generator">
+        <aside class="controls" aria-label="Code options">
+          <div class="panel-title">
+            <h2>Content</h2>
+          </div>
+
+          <div class="field-group">
+            <span class="label-text">Mode</span>
+            <div class="mode-grid" role="group" aria-label="Generator mode">
+              <button type="button" class="mode-button is-active" data-mode="qr">QR Code</button>
+              <button type="button" class="mode-button" data-mode="barcode">Barcode</button>
+            </div>
+          </div>
+
+          <div id="qr-type-section" class="field-group">
+            <span class="label-text">QR type</span>
+            <div id="content-type" class="type-grid" role="group" aria-label="QR type">
+              <button type="button" class="type-button is-active" data-type="url">Link</button>
+              <button type="button" class="type-button" data-type="text">Text</button>
+              <button type="button" class="type-button" data-type="email">Email</button>
+              <button type="button" class="type-button" data-type="phone">Phone</button>
+              <button type="button" class="type-button" data-type="sms">SMS</button>
+              <button type="button" class="type-button" data-type="wifi">Wi-Fi</button>
+            </div>
+          </div>
+
+          <div id="dynamic-fields" class="dynamic-fields"></div>
+
+          <div id="barcode-fields" class="dynamic-fields is-hidden">
+            <div class="field-group">
+              <label for="barcode-value">Barcode text</label>
+              <input id="barcode-value" type="text" value="123456789012" />
+            </div>
+            <div class="grid-2">
+              <div class="field-group">
+                <label for="barcode-format">Format</label>
+                <select id="barcode-format">
+                  <option value="CODE128">CODE128</option>
+                  <option value="EAN13">EAN-13</option>
+                  <option value="UPC">UPC</option>
+                  <option value="ITF14">ITF-14</option>
+                </select>
+              </div>
+              <label class="checkbox-control compact-check">
+                <input id="barcode-text" type="checkbox" checked />
+                Show text
+              </label>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="field-group">
+              <label for="dot-color">Code color</label>
+              <div class="color-control">
+                <input id="dot-color" type="color" value="#111827" />
+                <input id="dot-color-text" type="text" value="#111827" maxlength="7" />
+              </div>
+            </div>
+            <div class="field-group">
+              <label for="background-color">Background</label>
+              <div class="color-control">
+                <input id="background-color" type="color" value="#ffffff" />
+                <input id="background-color-text" type="text" value="#ffffff" maxlength="7" />
+              </div>
+            </div>
+          </div>
+
+          <div id="qr-style-section" class="grid-2">
+            <div class="field-group">
+              <span class="label-text">QR pixels</span>
+              <div class="option-grid two-options" role="group" aria-label="QR pixels">
+                <button type="button" class="option-button is-active" data-dot-style="square">
+                  Square
+                </button>
+                <button type="button" class="option-button" data-dot-style="rounded">Round</button>
+              </div>
+            </div>
+            <div class="field-group">
+              <label for="roundness">Roundness</label>
+              <input id="roundness" type="range" min="0" max="100" value="80" />
+            </div>
+          </div>
+
+          <div id="qr-logo-section" class="grid-2">
+            <div class="field-group">
+              <label for="logo-file">Center logo</label>
+              <input id="logo-file" type="file" accept="image/*" />
+            </div>
+            <div class="field-group">
+              <label for="logo-size">Logo size</label>
+              <input id="logo-size" type="range" min="10" max="30" value="18" />
+            </div>
+          </div>
+
+          <div id="qr-settings-section" class="grid-2">
+            <div class="field-group">
+              <span class="label-text">Error correction</span>
+              <div class="option-grid correction-grid" role="group" aria-label="Error correction">
+                <button type="button" class="option-button" data-error-level="L">Low</button>
+                <button type="button" class="option-button" data-error-level="M">Medium</button>
+                <button type="button" class="option-button" data-error-level="Q">Quartile</button>
+                <button type="button" class="option-button is-active" data-error-level="H">High</button>
+              </div>
+            </div>
+            <div class="field-group">
+              <label for="margin">Quiet zone</label>
+              <input id="margin" type="number" min="0" max="10" value="4" />
+            </div>
+          </div>
+        </aside>
+
+        <section class="preview-pane" aria-label="Generated code preview">
+          <div class="preview-toolbar">
+            <span id="payload-summary">Link QR</span>
+            <span id="size-summary">1024 px JPG</span>
+          </div>
+          <div class="qr-stage">
+            <canvas id="qr-canvas" width="512" height="512" aria-label="QR code preview"></canvas>
+          </div>
+          <div class="export-panel" aria-label="Export options">
+            <div class="field-group">
+              <label for="jpg-size">JPG size</label>
+              <div class="range-row">
+                <input id="jpg-size" type="range" min="256" max="4096" step="128" value="1024" />
+                <input id="jpg-size-number" type="number" min="256" max="4096" step="128" value="1024" />
+              </div>
+            </div>
+            <div class="actions">
+              <button id="download-jpg" type="button">Download JPG</button>
+              <button id="download-svg" type="button">Download SVG</button>
+            </div>
+            <p id="message" class="message" role="status"></p>
+          </div>
+        </section>
+      </section>
+      <footer class="app-footer">
+        <a href="https://github.com/jingjie/localcode" target="_blank" rel="noreferrer">
+          https://github.com/jingjie/localcode
+        </a>
+        <span>Built by Tan Jing Jie (Jay)</span>
+      </footer>
+    </main>
+  </body>
+</html>
