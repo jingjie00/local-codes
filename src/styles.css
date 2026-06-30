@@ -27,7 +27,8 @@ body {
 button,
 input,
 select,
-textarea {
+textarea,
+.logo-choose {
   font: inherit;
 }
 
@@ -49,6 +50,20 @@ textarea {
   padding: 16px max(18px, calc((100vw - 1120px) / 2 + 18px));
   color: #1f2925;
   background: #e8e8e6;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 9px;
 }
 
 .eyebrow {
@@ -88,7 +103,7 @@ h2 {
 
 .workspace {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   width: min(1120px, calc(100% - 36px));
   min-height: 0;
   margin: 0 auto;
@@ -218,12 +233,13 @@ textarea:focus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 7px;
   min-height: 36px;
   padding: 0 12px;
-  border: 1px solid #d4c8ee;
+  border: 1px solid #d8d0c4;
   border-radius: 6px;
-  color: #503d78;
-  background: #f1edfb;
+  color: #26322e;
+  background: #ffffff;
   font-size: 0.8rem;
   font-weight: 800;
   cursor: pointer;
@@ -231,8 +247,8 @@ textarea:focus {
 
 .logo-file:focus + .logo-choose,
 .visually-hidden:focus + .logo-choose {
-  border-color: #6850a8;
-  box-shadow: 0 0 0 3px rgb(104 80 168 / 16%);
+  border-color: #19483d;
+  box-shadow: 0 0 0 3px rgb(25 72 61 / 12%);
 }
 
 .logo-meta {
@@ -253,11 +269,11 @@ textarea:focus {
 }
 
 .logo-remove {
-  min-height: 28px;
-  padding: 0 8px;
-  color: #7a442a;
-  border: 1px solid #ecc9b5;
-  background: #fbefe8;
+  min-width: 30px;
+  min-height: 30px;
+  color: #5b625f;
+  border: 1px solid #d8d0c4;
+  background: transparent;
   font-size: 0.72rem;
 }
 
@@ -284,7 +300,7 @@ textarea:focus {
 }
 
 .type-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .two-options,
@@ -300,12 +316,64 @@ button {
   cursor: pointer;
 }
 
+.icon-button,
+.icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button {
+  gap: 8px;
+}
+
+.icon-only {
+  padding: 0;
+}
+
+.button-icon {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+button:hover:not(:disabled),
+.logo-choose:hover {
+  filter: brightness(0.98);
+}
+
+button:focus-visible,
+.logo-choose:focus-visible {
+  outline: 3px solid rgb(25 72 61 / 14%);
+  outline-offset: 2px;
+}
+
 .mode-button,
 .type-button,
 .option-button {
+  gap: 7px;
+  padding: 0 10px;
   color: #224238;
   border: 1px solid #bfd6cb;
   background: #eaf5ef;
+}
+
+.type-button,
+.option-button {
+  min-width: 0;
+}
+
+.type-button span,
+.option-button span,
+.mode-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mode-button.is-active,
@@ -598,19 +666,17 @@ input[type="range"] {
 }
 
 .actions button {
-  min-width: 128px;
-  padding: 0 14px;
-  color: #ffffff;
-  background: #19483d;
+  min-width: 88px;
+  padding: 0 13px;
 }
 
-.actions button + button {
+.actions .primary-action {
   color: #ffffff;
   border: 1px solid #19483d;
   background: #19483d;
 }
 
-.actions button:first-child {
+.actions .secondary-action {
   color: #19483d;
   border: 1px solid #d4cabd;
   background: #ffffff;
@@ -737,6 +803,11 @@ button:disabled {
 
   .app-header {
     gap: 10px;
+  }
+
+  .brand-mark {
+    width: 38px;
+    height: 38px;
   }
 
   .header-mode {

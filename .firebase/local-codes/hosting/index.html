@@ -5,21 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Local Codes</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <script type="module" crossorigin src="/assets/index-B6iiCImo.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DesRf_0F.css">
+    <script type="module" crossorigin src="/assets/index-BbSIlOwz.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BxacZblJ.css">
   </head>
   <body>
     <main class="app-shell">
       <header class="app-header">
-        <div>
-          <p class="eyebrow">Local Codes</p>
-          <h1>Local Codes</h1>
+        <div class="brand-lockup">
+          <img class="brand-mark" src="/favicon.svg" alt="" aria-hidden="true" />
+          <div>
+            <p class="eyebrow">Local Codes</p>
+            <h1>Local Codes</h1>
+          </div>
         </div>
         <div id="mode-section" class="header-mode">
           <span class="label-text">Mode</span>
           <div class="mode-grid" role="group" aria-label="Generator mode">
-            <button type="button" class="mode-button is-active" data-mode="qr">QR Code</button>
-            <button type="button" class="mode-button" data-mode="barcode">Barcode</button>
+            <button type="button" class="mode-button icon-button is-active" data-mode="qr">
+              <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 4h6v6H4z" />
+                <path d="M14 4h6v6h-6z" />
+                <path d="M4 14h6v6H4z" />
+                <path d="M15 15h2v2h-2z" />
+                <path d="M19 15h1v5h-5v-1" />
+              </svg>
+              <span>QR Code</span>
+            </button>
+            <button type="button" class="mode-button icon-button" data-mode="barcode">
+              <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 6v12" />
+                <path d="M7 6v12" />
+                <path d="M11 6v12" />
+                <path d="M15 6v12" />
+                <path d="M20 6v12" />
+              </svg>
+              <span>Barcode</span>
+            </button>
           </div>
         </div>
       </header>
@@ -33,12 +54,50 @@
           <div id="qr-type-section" class="field-group">
             <span class="label-text">QR type</span>
             <div id="content-type" class="type-grid" role="group" aria-label="QR type">
-              <button type="button" class="type-button is-active" data-type="url">Link</button>
-              <button type="button" class="type-button" data-type="text">Text</button>
-              <button type="button" class="type-button" data-type="email">Email</button>
-              <button type="button" class="type-button" data-type="phone">Phone</button>
-              <button type="button" class="type-button" data-type="sms">SMS</button>
-              <button type="button" class="type-button" data-type="wifi">Wi-Fi</button>
+              <button type="button" class="type-button icon-button is-active" data-type="url">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" />
+                  <path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" />
+                </svg>
+                <span>Link</span>
+              </button>
+              <button type="button" class="type-button icon-button" data-type="text">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 6h14" />
+                  <path d="M8 12h8" />
+                  <path d="M10 18h4" />
+                </svg>
+                <span>Text</span>
+              </button>
+              <button type="button" class="type-button icon-button" data-type="email">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 6h16v12H4z" />
+                  <path d="m4 7 8 6 8-6" />
+                </svg>
+                <span>Email</span>
+              </button>
+              <button type="button" class="type-button icon-button" data-type="phone">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 4h4l2 5-3 2a10 10 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A17 17 0 0 1 3 6a2 2 0 0 1 2-2h2z" />
+                </svg>
+                <span>Phone</span>
+              </button>
+              <button type="button" class="type-button icon-button" data-type="sms">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 5h14v10H8l-4 4V6a1 1 0 0 1 1-1z" />
+                  <path d="M8 9h8" />
+                  <path d="M8 12h5" />
+                </svg>
+                <span>SMS</span>
+              </button>
+              <button type="button" class="type-button icon-button" data-type="wifi">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 9a11 11 0 0 1 14 0" />
+                  <path d="M8 13a6 6 0 0 1 8 0" />
+                  <path d="M12 18h.01" />
+                </svg>
+                <span>Wi-Fi</span>
+              </button>
             </div>
           </div>
 
@@ -71,10 +130,21 @@
               <span class="label-text">Center logo</span>
               <div class="logo-picker">
                 <input id="logo-file" class="visually-hidden" type="file" accept="image/*" />
-                <label class="logo-choose" for="logo-file">Choose image</label>
+                <label class="logo-choose icon-button" for="logo-file">
+                  <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 5v14" />
+                    <path d="M5 12h14" />
+                  </svg>
+                  <span>Choose image</span>
+                </label>
                 <div class="logo-meta">
                   <span id="logo-name">No logo selected</span>
-                  <button id="logo-remove" class="logo-remove" type="button" disabled>Remove</button>
+                  <button id="logo-remove" class="logo-remove icon-only" type="button" disabled aria-label="Remove logo" title="Remove logo">
+                    <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M18 6 6 18" />
+                      <path d="m6 6 12 12" />
+                    </svg>
+                  </button>
                 </div>
                 <img id="logo-preview" class="logo-preview is-hidden" alt="Selected logo preview" />
               </div>
@@ -134,10 +204,18 @@
               <div class="field-group">
                 <span class="label-text">QR pixels</span>
                 <div class="option-grid two-options" role="group" aria-label="QR pixels">
-                  <button type="button" class="option-button is-active" data-dot-style="square">
-                    Square
+                  <button type="button" class="option-button icon-button is-active" data-dot-style="square">
+                    <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M7 7h10v10H7z" />
+                    </svg>
+                    <span>Square</span>
                   </button>
-                  <button type="button" class="option-button" data-dot-style="rounded">Round</button>
+                  <button type="button" class="option-button icon-button" data-dot-style="rounded">
+                    <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M8 5h8a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3z" />
+                    </svg>
+                    <span>Round</span>
+                  </button>
                 </div>
               </div>
               <div class="field-group">
@@ -162,8 +240,22 @@
               </div>
             </div>
             <div class="actions">
-              <button id="download-jpg" type="button">Download JPG</button>
-              <button id="download-svg" type="button">Download SVG</button>
+              <button id="download-jpg" class="icon-button secondary-action" type="button">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3v12" />
+                  <path d="m7 10 5 5 5-5" />
+                  <path d="M5 20h14" />
+                </svg>
+                <span>JPG</span>
+              </button>
+              <button id="download-svg" class="icon-button primary-action" type="button">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3v12" />
+                  <path d="m7 10 5 5 5-5" />
+                  <path d="M5 20h14" />
+                </svg>
+                <span>SVG</span>
+              </button>
             </div>
             <p id="message" class="message" role="status"></p>
           </div>
