@@ -23,3 +23,16 @@ pnpm-debug.log*
 
 # Vite cache
 .vite/
+
+#firebase
+.firebase/
+.firebase/hosting.LmZpcmViYXNlL2xvY2FsLWNvZGVzL2hvc3Rpbmc.cache
+.firebase/local-codes/hosting/assets/index-CrxLFcpU.js
+.firebase/local-codes/hosting/assets/index-IFwQ0Wdv.css
+.firebase/local-codes/hosting/favicon.svg
+.firebase/local-codes/hosting/index.html
+.firebase/local-codes/hosting/index.html.map
+.firebase/local-codes/hosting/index.html.map.gz
+.firebase/local-codes/hosting/index.html.map.gz.br
+.firebase/local-codes/hosting/index.html.map.gz.br.br
+.firebase/local-codes/hosting/index.html.map.gz.br.br.br
