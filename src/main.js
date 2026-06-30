@@ -239,6 +239,7 @@ async function updateCode() {
   const isReady = payload.trim().length > 0;
   elements.downloadSvg.disabled = !isReady;
   elements.downloadJpg.disabled = !isReady;
+  setPreviewDraggable(isReady);
   elements.payloadSummary.textContent =
     state.mode === 'qr' ? `${typeLabels[state.type]} QR` : `${state.barcodeFormat} Barcode`;
   elements.sizeSummary.textContent = `${state.jpgSize} px JPG`;
@@ -259,6 +260,7 @@ async function updateCode() {
     }
   } catch (error) {
     clearCanvas(previewSize, previewSize);
+    setPreviewDraggable(false);
     setMessage(error.message || 'Unable to generate this code.');
   }
 }
@@ -271,7 +273,13 @@ function renderQrToCanvas(canvas, payload, width, options = {}) {
   const tile = width / (count + margin * 2);
 
   drawQrBackground(ctx, width, options);
-  ctx.fillStyle = getCodeColor();
+  ctx.save();
+  if (shouldKnockOutCode(options)) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = '#000000';
+  } else {
+    ctx.fillStyle = getCodeColor();
+  }
 
   for (let row = 0; row < count; row += 1) {
     for (let col = 0; col < count; col += 1) {
@@ -286,6 +294,7 @@ function renderQrToCanvas(canvas, payload, width, options = {}) {
       }
     }
   }
+  ctx.restore();
 
   if (state.logoImage) {
     drawLogo(ctx, width, options);
@@ -319,15 +328,44 @@ function renderBarcodeToCanvas(canvas, payload, width, options = {}) {
   const height = Math.max(220, Math.round(width * 0.46));
   prepareCanvas(canvas, width, height);
   const sharpness = canvas === elements.canvas ? Math.max(2, window.devicePixelRatio || 1) : 1;
-  JsBarcode(canvas, payload, barcodeOptions(width, sharpness, options));
+  const knockOutCode = shouldKnockOutCode(options);
+  JsBarcode(
+    canvas,
+    payload,
+    barcodeOptions(width, sharpness, options, { codeColor: knockOutCode ? '#000000' : undefined })
+  );
+  if (knockOutCode) {
+    knockOutBarcodeInk(canvas, payload, width, sharpness, options);
+  }
   canvas.style.aspectRatio = `${canvas.width} / ${canvas.height}`;
 }
 
-function barcodeOptions(width, sharpness = 1, options = {}) {
+function knockOutBarcodeInk(canvas, payload, width, sharpness, options = {}) {
+  const maskCanvas = document.createElement('canvas');
+  JsBarcode(
+    maskCanvas,
+    payload,
+    barcodeOptions(width, sharpness, options, { background: null, codeColor: '#000000' })
+  );
+
+  const ctx = canvas.getContext('2d');
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.drawImage(maskCanvas, 0, 0);
+  ctx.restore();
+}
+
+function barcodeOptions(width, sharpness = 1, options = {}, overrides = {}) {
+  const background = getBackgroundColor(options);
   return {
     format: state.barcodeFormat,
-    lineColor: getCodeColor(),
-    background: getBackgroundColor(options) === 'transparent' ? 'rgba(255,255,255,0)' : getBackgroundColor(options),
+    lineColor: overrides.codeColor || getCodeColor(),
+    background:
+      overrides.background !== undefined
+        ? overrides.background
+        : background === 'transparent'
+          ? 'rgba(255,255,255,0)'
+          : background,
     width: Math.max(3, Math.round(width / 100)) * sharpness,
     height: Math.round(width * 0.23),
     margin: Math.max(8, state.margin * 4),
@@ -359,7 +397,7 @@ function clearCanvas(width, height) {
 }
 
 function getBackgroundColor(options = {}) {
-  if (options.jpgFallback) return '#ffffff';
+  if (options.jpgFallback && state.transparentBackground) return '#ffffff';
   return state.transparentBackground ? 'transparent' : state.backgroundColor;
 }
 
@@ -372,8 +410,12 @@ function getSvgCodeColor() {
 }
 
 function getLogoPlateColor(options = {}) {
-  if (options.jpgFallback) return '#ffffff';
+  if (options.jpgFallback && state.transparentBackground) return '#ffffff';
   return state.transparentBackground ? '#ffffff' : state.backgroundColor;
+}
+
+function shouldKnockOutCode(options = {}) {
+  return state.transparentCode && getBackgroundColor(options) !== 'transparent';
 }
 
 function roundedRect(ctx, x, y, width, height, radius) {
@@ -392,12 +434,7 @@ function buildQrSvg(payload, size) {
   const count = qr.modules.size;
   const tile = size / (count + state.margin * 2);
   const radius = state.dotStyle === 'rounded' ? (tile / 2) * state.roundness : 0;
-  const parts = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`
-  ];
-  if (!state.transparentBackground) {
-    parts.push(`<rect width="100%" height="100%" fill="${state.backgroundColor}"/>`);
-  }
+  const moduleRects = [];
 
   for (let row = 0; row < count; row += 1) {
     for (let col = 0; col < count; col += 1) {
@@ -405,10 +442,31 @@ function buildQrSvg(payload, size) {
       const x = roundNumber((col + state.margin) * tile);
       const y = roundNumber((row + state.margin) * tile);
       const w = roundNumber(tile);
-      parts.push(
-        `<rect x="${x}" y="${y}" width="${w}" height="${w}" rx="${roundNumber(radius)}" fill="${getSvgCodeColor()}"/>`
+      moduleRects.push(
+        `<rect x="${x}" y="${y}" width="${w}" height="${w}" rx="${roundNumber(radius)}"/>`
       );
     }
+  }
+
+  const parts = [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`
+  ];
+  if (state.transparentCode && !state.transparentBackground) {
+    parts.push(
+      '<defs>',
+      '<mask id="qr-code-holes" maskUnits="userSpaceOnUse">',
+      '<rect width="100%" height="100%" fill="white"/>',
+      `<g fill="black">${moduleRects.join('')}</g>`,
+      '</mask>',
+      '</defs>',
+      `<rect width="100%" height="100%" fill="${state.backgroundColor}" mask="url(#qr-code-holes)"/>`
+    );
+  } else if (!state.transparentBackground) {
+    parts.push(`<rect width="100%" height="100%" fill="${state.backgroundColor}"/>`);
+  }
+
+  if (!state.transparentCode) {
+    parts.push(`<g fill="${getSvgCodeColor()}">${moduleRects.join('')}</g>`);
   }
 
   if (state.logoDataUrl) {
@@ -429,8 +487,48 @@ function buildQrSvg(payload, size) {
 
 function buildBarcodeSvg(payload) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  JsBarcode(svg, payload, barcodeOptions(state.jpgSize));
+  if (state.transparentCode && !state.transparentBackground) {
+    JsBarcode(
+      svg,
+      payload,
+      barcodeOptions(state.jpgSize, 1, {}, { background: null, codeColor: '#000000' })
+    );
+    applyBarcodeSvgKnockout(svg);
+  } else {
+    JsBarcode(svg, payload, barcodeOptions(state.jpgSize));
+  }
   return new XMLSerializer().serializeToString(svg);
+}
+
+function applyBarcodeSvgKnockout(svg) {
+  const maskId = 'barcode-code-holes';
+  const children = [...svg.childNodes];
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  const mask = document.createElementNS('http://www.w3.org/2000/svg', 'mask');
+  const fullRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+
+  mask.setAttribute('id', maskId);
+  mask.setAttribute('maskUnits', 'userSpaceOnUse');
+  fullRect.setAttribute('width', '100%');
+  fullRect.setAttribute('height', '100%');
+  fullRect.setAttribute('fill', 'white');
+  mask.append(fullRect);
+
+  children.forEach((child) => {
+    const clone = child.cloneNode(true);
+    if (clone.nodeType === Node.ELEMENT_NODE) {
+      clone.setAttribute('fill', 'black');
+    }
+    mask.append(clone);
+  });
+
+  defs.append(mask);
+  background.setAttribute('width', '100%');
+  background.setAttribute('height', '100%');
+  background.setAttribute('fill', state.backgroundColor);
+  background.setAttribute('mask', `url(#${maskId})`);
+  svg.replaceChildren(defs, background);
 }
 
 async function downloadSvg() {
@@ -452,13 +550,25 @@ async function downloadJpg() {
     renderBarcodeToCanvas(exportCanvas, payload, state.jpgSize, { jpgFallback: true });
   }
 
-  exportCanvas.toBlob(
+  const jpgCanvas = flattenCanvasForJpg(exportCanvas);
+  jpgCanvas.toBlob(
     (blob) => {
       if (blob) downloadBlob(blob, filename('jpg'));
     },
     'image/jpeg',
     0.94
   );
+}
+
+function flattenCanvasForJpg(sourceCanvas) {
+  const canvas = document.createElement('canvas');
+  canvas.width = sourceCanvas.width;
+  canvas.height = sourceCanvas.height;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(sourceCanvas, 0, 0);
+  return canvas;
 }
 
 function filename(extension) {
@@ -475,6 +585,66 @@ function downloadBlob(blob, name) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function setPreviewDraggable(isDraggable) {
+  elements.canvas.draggable = isDraggable;
+  elements.canvas.classList.toggle('is-draggable', isDraggable);
+}
+
+function handlePreviewDragStart(event) {
+  const payload = buildPayload();
+  if (!payload.trim()) {
+    event.preventDefault();
+    return;
+  }
+
+  try {
+    const dragCanvas = document.createElement('canvas');
+    if (state.mode === 'qr') {
+      renderQrToCanvas(dragCanvas, payload, state.jpgSize);
+    } else {
+      renderBarcodeToCanvas(dragCanvas, payload, state.jpgSize);
+    }
+
+    const name = filename('png');
+    const dataUrl = dragCanvas.toDataURL('image/png');
+    event.dataTransfer.effectAllowed = 'copy';
+    event.dataTransfer.setData('DownloadURL', `image/png:${name}:${dataUrl}`);
+    event.dataTransfer.setData('text/uri-list', dataUrl);
+    event.dataTransfer.setData('text/plain', name);
+    event.dataTransfer.setData('text/html', `<img src="${dataUrl}" alt="${escapeHtml(name)}">`);
+    const previewRect = elements.canvas.getBoundingClientRect();
+    event.dataTransfer.setDragImage(elements.canvas, previewRect.width / 2, previewRect.height / 2);
+
+    try {
+      event.dataTransfer.items.add(dataUrlToFile(dataUrl, name));
+    } catch {
+      // Some browsers expose DataTransferItemList but do not accept File items.
+    }
+  } catch (error) {
+    event.preventDefault();
+    setMessage(error.message || 'Unable to drag this code.');
+  }
+}
+
+function dataUrlToFile(dataUrl, name) {
+  const [header, data] = dataUrl.split(',');
+  const mime = header.match(/^data:(.*?);/)?.[1] || 'image/png';
+  const bytes = atob(data);
+  const buffer = new Uint8Array(bytes.length);
+  for (let index = 0; index < bytes.length; index += 1) {
+    buffer[index] = bytes.charCodeAt(index);
+  }
+  return new File([buffer], name, { type: mime });
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 function setMessage(text) {
@@ -666,6 +836,7 @@ elements.jpgSize.addEventListener('input', () => syncSize(elements.jpgSize));
 elements.jpgSizeNumber.addEventListener('input', () => syncSize(elements.jpgSizeNumber));
 elements.downloadSvg.addEventListener('click', downloadSvg);
 elements.downloadJpg.addEventListener('click', downloadJpg);
+elements.canvas.addEventListener('dragstart', handlePreviewDragStart);
 
 syncColor(elements.dotColor, elements.dotColorText, 'dotColor');
 syncColor(elements.backgroundColor, elements.backgroundColorText, 'backgroundColor');
